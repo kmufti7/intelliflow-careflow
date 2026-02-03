@@ -236,13 +236,21 @@ SUMMARY
 
 ## Screenshots
 
-### Patient Analysis View
-![Patient Analysis](screenshots/patient_analysis.png)
-*Extracted facts and care gaps for selected patient*
+### Main UI
+![Main UI](screenshots/main_ui.png)
+*CareFlow main interface with patient selection*
 
-### Chat Interface
-![Chat Interface](screenshots/chat_interface.png)
-*Query the system about care gaps with evidence-based responses*
+### Extracted Facts
+![Extracted Facts](screenshots/extracted_facts.png)
+*Regex-first extraction of clinical facts from patient notes*
+
+### Care Gaps
+![Care Gaps](screenshots/care_gaps.png)
+*Deterministic gap detection with "Therefore" statements*
+
+### Booking
+![Booking](screenshots/booking.png)
+*Appointment booking based on detected care gaps*
 
 ### Governance Log
 ![Governance Log](screenshots/governance_log.png)
