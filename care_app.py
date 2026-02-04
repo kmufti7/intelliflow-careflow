@@ -4,6 +4,12 @@ import streamlit as st
 from datetime import datetime
 import time
 
+from intelliflow_core.governance_ui import (
+    init_governance_state,
+    add_governance_log as _add_governance_log,
+)
+from intelliflow_core.helpers import format_timestamp_short
+
 from care_database import get_database
 from seed_care_data import seed_all
 from extraction import PatientFactExtractor, ExtractedFacts
@@ -238,8 +244,8 @@ def init_session_state():
         st.session_state.selected_patient_id = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
-    if "governance_logs" not in st.session_state:
-        st.session_state.governance_logs = []
+    # Use shared governance state from intelliflow_core
+    init_governance_state()
     if "total_tokens" not in st.session_state:
         st.session_state.total_tokens = 0
     if "session_cost" not in st.session_state:
@@ -267,18 +273,11 @@ def initialize_database():
 
 
 def add_governance_log(component: str, action: str, success: bool, details: str = ""):
-    """Add an entry to the governance log."""
-    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    st.session_state.governance_logs.insert(0, {
-        "timestamp": timestamp,
-        "component": component,
-        "action": action,
-        "success": success,
-        "details": details,
-    })
-    st.session_state.governance_logs = st.session_state.governance_logs[:100]
+    """Add an entry to the governance log using shared intelliflow_core component."""
+    # Use shared governance logging from intelliflow_core
+    _add_governance_log(component, action, success, details if details else None)
 
-    # Also log to database
+    # Also log to database (CareFlow-specific backend persistence)
     if st.session_state.db:
         st.session_state.db.log_action(
             agent_name=component,
@@ -289,16 +288,18 @@ def add_governance_log(component: str, action: str, success: bool, details: str 
 
 
 def render_governance_log():
-    """Render the governance log panel."""
+    """Render the governance log panel using GovernanceLogEntry from intelliflow_core."""
     if not st.session_state.governance_logs:
         st.info("No activity yet. Select a patient to begin.")
         return
 
+    # Build plain text log entries (reversed for newest-first display)
     log_lines = []
-    for entry in st.session_state.governance_logs:
-        status = "OK" if entry["success"] else "ERROR"
-        details = f' - {entry["details"]}' if entry["details"] else ""
-        line = f'{entry["timestamp"]} [{status:5}] [{entry["component"]}] {entry["action"]}{details}'
+    for entry in reversed(st.session_state.governance_logs):
+        status = "OK" if entry.success else "ERROR"
+        timestamp = format_timestamp_short(entry.timestamp)
+        details = f' - {entry.details}' if entry.details else ""
+        line = f'{timestamp} [{status:5}] [{entry.component}] {entry.action}{details}'
         log_lines.append(line)
 
     st.code("\n".join(log_lines), language=None)
