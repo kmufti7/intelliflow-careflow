@@ -76,6 +76,90 @@ Response with [PATIENT: X] and [GUIDELINE: Y] citations
 
 ---
 
+## PHI-Aware Data Residency Architecture
+
+CareFlow implements a **PHI-Aware Hybrid Vector Strategy** that demonstrates compliance-informed design for healthcare AI:
+
+```
++-------------------+     +-----------------------+
+|   Patient Notes   |     |  Medical Guidelines   |
+|      (PHI)        |     |     (Public Data)     |
++-------------------+     +-----------------------+
+         |                          |
+         v                          v
++-------------------+     +-----------------------+
+|    FAISS Index    |     |    Mode-Switched      |
+|  (Local, Always)  |     |   FAISS or Pinecone   |
++-------------------+     +-----------------------+
+         |                          |
+         +----------+   +-----------+
+                    |   |
+                    v   v
+            +-----------------+
+            |  Concept Query  |
+            |    Builder      |
+            |  (De-identifies |
+            |   patient data) |
+            +-----------------+
+                    |
+                    v
+            +-----------------+
+            |   Guideline     |
+            |   Retriever     |
+            +-----------------+
+```
+
+### Key Principles
+
+1. **PHI Never Leaves the Machine**: Patient notes are ONLY stored and searched in local FAISS indexes
+2. **De-identification Layer**: The ConceptQueryBuilder transforms patient facts into generic clinical concepts before any external query
+3. **Mode Switching**: Enterprise deployments can use Pinecone for scalable guideline search while maintaining PHI protection
+
+### Running Modes
+
+```bash
+# Local mode (default) - FAISS only, zero external dependencies
+python care_app.py --mode=local
+
+# Enterprise mode - Pinecone for guidelines, FAISS for patient data
+python care_app.py --mode=enterprise
+```
+
+### Concept Query De-identification
+
+```python
+# UNSAFE: Direct patient data in query
+"Patient PT001 A1C 8.2% diabetes hypertension"
+
+# SAFE: De-identified concept query (what CareFlow sends)
+"diabetes glycemic a1c hypertension blood pressure guidelines clinical recommendations"
+```
+
+The `ConceptQueryBuilder` extracts only generic clinical concepts:
+- Diagnoses → Clinical concepts (never patient names)
+- Lab values → Metric categories (never actual numbers)
+- Medications → Drug classes (never doses)
+
+### Setting Up Enterprise Mode
+
+1. Set environment variables:
+```bash
+PINECONE_API_KEY=your_pinecone_api_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+2. Ingest guidelines to Pinecone:
+```bash
+python ingest_guidelines_pinecone.py
+```
+
+3. Run in enterprise mode:
+```bash
+python care_app.py --mode=enterprise
+```
+
+---
+
 ## Key Design Decisions
 
 ### Why Regex-First Extraction?
@@ -117,7 +201,9 @@ Response with [PATIENT: X] and [GUIDELINE: Y] citations
 | LLM | OpenAI GPT-4o-mini | Extraction fallback + Explanation |
 | Extraction | Python regex | Primary fact extraction |
 | Reasoning | Python code | Deterministic gap logic |
-| Vector Store | FAISS | Semantic retrieval |
+| Vector Store | FAISS (local) | PHI-safe patient note retrieval |
+| Vector Store | Pinecone (enterprise) | Scalable guideline retrieval |
+| PHI Protection | ConceptQueryBuilder | De-identification layer |
 | Embeddings | text-embedding-3-small | Document embeddings |
 | Database | SQLite | Patients, appointments, audit logs |
 | UI | Streamlit | Demo interface |
@@ -135,13 +221,18 @@ IntelliFlow_CareFlow/
 |-- extraction.py            # Regex-first fact extraction
 |-- reasoning_engine.py      # Deterministic gap detection rules
 |-- tools.py                 # Booking tool and utilities
-|-- vector_store_faiss.py    # FAISS index management
+|-- vector_store_faiss.py    # FAISS index management (PHI-safe, local)
+|-- concept_query.py         # PHI de-identification layer
+|-- guideline_retriever.py   # Hybrid vector retrieval (FAISS/Pinecone)
+|-- ingest_guidelines_pinecone.py  # Enterprise mode setup script
 |-- seed_care_data.py        # Sample data seeder
 |-- test_suite.py            # Test runner
 |-- tests/
 |   |-- test_extraction.py   # Extraction layer tests
 |   |-- test_reasoning.py    # Reasoning engine tests
 |   |-- test_booking.py      # Booking tool tests
+|   |-- test_concept_query.py  # PHI de-identification tests
+|   |-- test_retrieval.py    # Hybrid retrieval tests
 |-- data/
 |   |-- medical_kb/          # Guideline markdown files (10 guidelines)
 |-- indexes/                 # FAISS indexes (gitignored)
@@ -216,8 +307,10 @@ SUMMARY
   [PASS] Extraction: 11/11
   [PASS] Reasoning: 14/14
   [PASS] Booking: 11/11
+  [PASS] Concept Query: 15/15
+  [PASS] Retrieval: 15/15
 ----------------------------------------------------------------------
-  TOTAL: 36/36 (ALL TESTS PASSED)
+  TOTAL: 66/66 (ALL TESTS PASSED)
 ```
 
 ---
@@ -331,6 +424,7 @@ for gap in result.gaps:
 | Variable | Description | Required |
 |----------|-------------|----------|
 | OPENAI_API_KEY | OpenAI API key | Yes |
+| PINECONE_API_KEY | Pinecone API key (enterprise mode only) | No |
 
 ---
 

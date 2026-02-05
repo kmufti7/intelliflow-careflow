@@ -13,6 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from tests.test_extraction import TestExtraction
 from tests.test_reasoning import TestReasoning
 from tests.test_booking import TestBooking
+from tests.test_concept_query import TestConceptQuery
+from tests.test_retrieval import TestRetrieval
 
 
 def run_all_tests(output_file: str = "test_results.txt"):
@@ -59,6 +61,26 @@ def run_all_tests(output_file: str = "test_results.txt"):
     total_passed += booking_results["passed"]
     total_tests += booking_results["total"]
     print(f"  -> {booking_results['passed']}/{booking_results['total']} passed")
+    print()
+
+    # Run Concept Query Tests (PHI-Aware De-identification)
+    print("Running Concept Query Tests...")
+    concept_suite = TestConceptQuery()
+    concept_results = concept_suite.run_all()
+    all_results.append(concept_results)
+    total_passed += concept_results["passed"]
+    total_tests += concept_results["total"]
+    print(f"  -> {concept_results['passed']}/{concept_results['total']} passed")
+    print()
+
+    # Run Retrieval Tests (Hybrid Vector Strategy)
+    print("Running Retrieval Tests...")
+    retrieval_suite = TestRetrieval()
+    retrieval_results = retrieval_suite.run_all()
+    all_results.append(retrieval_results)
+    total_passed += retrieval_results["passed"]
+    total_tests += retrieval_results["total"]
+    print(f"  -> {retrieval_results['passed']}/{retrieval_results['total']} passed")
     print()
 
     # Print Summary
