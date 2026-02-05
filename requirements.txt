@@ -4,4 +4,5 @@ faiss-cpu>=1.7.4
 python-dotenv>=1.0.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
+pinecone-client>=3.0.0
 git+https://github.com/kmufti7/intelliflow-core.git@main
