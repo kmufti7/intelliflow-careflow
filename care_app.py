@@ -15,7 +15,7 @@ from seed_care_data import seed_all
 from extraction import PatientFactExtractor, ExtractedFacts
 from reasoning_engine import ReasoningEngine, ReasoningResult, GapResult
 from care_orchestrator import CareOrchestrator
-from chaos_mode import set_chaos_config, ChaosFailureType
+from chaos_mode import set_chaos_config, get_chaos_config, ChaosFailureType, ChaosError, check_faiss_chaos, check_pinecone_chaos, FALLBACK_RESPONSE
 
 # Page configuration
 st.set_page_config(
@@ -536,6 +536,17 @@ def render_patient_note(patient_id: str):
         st.markdown("**Latest Clinic Note** " + f"({note['note_date']})")
         st.markdown(f'<div class="clinic-note">{note["note_text"]}</div>', unsafe_allow_html=True)
 
+        # Check chaos mode before running the pipeline
+        chaos_config = get_chaos_config()
+        if chaos_config.enabled:
+            try:
+                check_faiss_chaos()
+                check_pinecone_chaos()
+            except ChaosError as ce:
+                add_governance_log("ChaosMode", f"failure_injected: {ce.failure_type.value}", False, str(ce))
+                st.error(FALLBACK_RESPONSE)
+                return
+
         # Extract facts if not already done for this patient
         facts_key = f"facts_{patient_id}"
         gaps_key = f"gaps_{patient_id}"
@@ -651,6 +662,11 @@ def main():
                 key="chaos_failure_type"
             )
             set_chaos_config(enabled=True, failure_type=failure_type)
+            # Clear cached patient results so chaos check runs on next render
+            if st.session_state.selected_patient_id:
+                st.session_state.pop(f"facts_{st.session_state.selected_patient_id}", None)
+                st.session_state.pop(f"gaps_{st.session_state.selected_patient_id}", None)
+                st.session_state.pop("last_patient_id", None)
             st.warning("Chaos mode active — failures will be injected")
         else:
             set_chaos_config(enabled=False)

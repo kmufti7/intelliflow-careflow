@@ -250,6 +250,9 @@ class CareOrchestrator:
                 error=output.get("error")
             )
 
+        except ChaosError:
+            raise  # Let ChaosError propagate to process_query handler
+
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             return StepResult(
