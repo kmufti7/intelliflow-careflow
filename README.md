@@ -43,35 +43,16 @@ CareFlow separates these concerns explicitly.
 
 ## Architecture
 
-```
-User Query
-    |
-    v
-+-------------------+
-|   Planner Agent   |  <- Classifies intent, creates execution plan
-+-------------------+
-    |
-    v
-+-------------------+
-|   Orchestrator    |  <- Coordinates component execution
-+-------------------+
-    |
-    +---> Extraction (regex-first, LLM fallback)
-    |         |
-    |         v
-    +---> Vector Search (FAISS indexes)
-    |         |
-    |         v
-    +---> Reasoning Engine (deterministic rules)
-    |         |
-    |         v
-    +---> Booking Tool (appointment scheduling)
-    |         |
-    |         v
-    +---> LLM Response (with citations)
-    |
-    v
-Response with [PATIENT: X] and [GUIDELINE: Y] citations
+```mermaid
+flowchart TD
+  U[User Query] --> P[Planner Agent<br/>Classifies intent, creates execution plan]
+  P --> O[Orchestrator<br/>Coordinates component execution]
+  O --> X[Extraction<br/>regex-first, LLM fallback]
+  X --> V[Vector Search<br/>FAISS indexes]
+  V --> RE[Reasoning Engine<br/>deterministic rules]
+  RE --> B[Booking Tool<br/>appointment scheduling]
+  B --> R[LLM Response<br/>with citations]
+  R --> OUT[Response with PATIENT and GUIDELINE citations]
 ```
 
 ---
@@ -80,33 +61,15 @@ Response with [PATIENT: X] and [GUIDELINE: Y] citations
 
 CareFlow implements a **PHI-Aware Hybrid Vector Strategy** that demonstrates compliance-informed design for healthcare AI:
 
-```
-+-------------------+     +-----------------------+
-|   Patient Notes   |     |  Medical Guidelines   |
-|      (PHI)        |     |     (Public Data)     |
-+-------------------+     +-----------------------+
-         |                          |
-         v                          v
-+-------------------+     +-----------------------+
-|    FAISS Index    |     |    Mode-Switched      |
-|  (Local, Always)  |     |   FAISS or Pinecone   |
-+-------------------+     +-----------------------+
-         |                          |
-         +----------+   +-----------+
-                    |   |
-                    v   v
-            +-----------------+
-            |  Concept Query  |
-            |    Builder      |
-            |  (De-identifies |
-            |   patient data) |
-            +-----------------+
-                    |
-                    v
-            +-----------------+
-            |   Guideline     |
-            |   Retriever     |
-            +-----------------+
+```mermaid
+flowchart TD
+  PN[Patient Notes<br/>PHI] --> FAISS[(FAISS Index<br/>Local, Always)]
+  MG[Medical Guidelines<br/>Public Data] --> MS[(Mode-Switched<br/>FAISS or Pinecone)]
+
+  FAISS --> CQB[Concept Query Builder<br/>De-identifies patient data]
+  MS --> CQB
+
+  CQB --> GR[Guideline Retriever]
 ```
 
 ### Key Principles
