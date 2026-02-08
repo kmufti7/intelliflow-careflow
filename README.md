@@ -154,6 +154,37 @@ python care_app.py --mode=enterprise
 - **Appointment Booking**: Schedule specialist follow-ups based on gaps
 - **Guideline Search**: FAISS vector search over medical guidelines
 - **Governance Logging**: Full audit trail of all operations
+- **FHIR Ingestion**: Structured data intake from HL7 FHIR R4 Bundles
+
+---
+
+## Interoperability & Data Standards
+
+CareFlow supports dual-mode data ingestion — structured FHIR resources and unstructured clinical notes — so the same reasoning engine works regardless of how data arrives.
+
+| Standard | Support | Details |
+|----------|---------|---------|
+| HL7 FHIR R4 | Bundle, Patient, Observation | Parses FHIR JSON bundles to extract demographics and lab results |
+| LOINC | A1C keyed to code 4548-4 | Terminology-aware extraction from Observation resources |
+| Legacy (unstructured) | Regex-first, LLM fallback | Existing pipeline for free-text clinical notes |
+
+### How It Works
+
+```
+FHIR Bundle (JSON)          Unstructured Note (text)
+       │                              │
+       ▼                              ▼
+  fhir_ingest.py              extraction.py
+  (parse Bundle →             (regex-first →
+   Patient + Observation)      LLM fallback)
+       │                              │
+       └──────────┬───────────────────┘
+                  ▼
+         Reasoning Engine
+      (deterministic gap rules)
+```
+
+Both paths feed the same deterministic reasoning engine — structured data skips the extraction uncertainty entirely.
 
 ---
 
@@ -182,6 +213,7 @@ IntelliFlow_CareFlow/
 |-- care_orchestrator.py     # Plan execution coordinator
 |-- planner_agent.py         # Query planning and intent classification
 |-- extraction.py            # Regex-first fact extraction
+|-- fhir_ingest.py           # FHIR R4 Bundle parser (dual-mode ingestion)
 |-- reasoning_engine.py      # Deterministic gap detection rules
 |-- tools.py                 # Booking tool and utilities
 |-- vector_store_faiss.py    # FAISS index management (PHI-safe, local)
@@ -196,8 +228,10 @@ IntelliFlow_CareFlow/
 |   |-- test_booking.py      # Booking tool tests
 |   |-- test_concept_query.py  # PHI de-identification tests
 |   |-- test_retrieval.py    # Hybrid retrieval tests
+|   |-- test_fhir_ingest.py  # FHIR ingestion tests
 |-- data/
 |   |-- medical_kb/          # Guideline markdown files (10 guidelines)
+|   |-- fhir_bundle.json     # Sample FHIR R4 Bundle (Patient + A1C Observation)
 |-- indexes/                 # FAISS indexes (gitignored)
 ```
 
@@ -272,8 +306,9 @@ SUMMARY
   [PASS] Booking: 11/11
   [PASS] Concept Query: 15/15
   [PASS] Retrieval: 15/15
+  [PASS] FHIR Ingest: 3/3
 ----------------------------------------------------------------------
-  TOTAL: 66/66 (ALL TESTS PASSED)
+  TOTAL: 69/69 (ALL TESTS PASSED)
 ```
 
 ---
