@@ -119,6 +119,36 @@ class CareOrchestrator:
         if self.log_callback:
             self.log_callback(component, action, success, details)
 
+    def analyze_patient(self, patient_id: str) -> tuple:
+        """Chaos-guarded patient analysis: extract facts + evaluate gaps.
+
+        This is the single entry point for patient-selection analysis.
+        Both the UI (render_patient_note) and tests call this method.
+        Raises ChaosError if chaos mode is active, preventing the pipeline
+        from running.
+
+        Returns:
+            (ExtractedFacts, ReasoningResult) tuple
+        """
+        # Chaos gate — must be first. If removed, test_chaos_blocks_patient_analysis fails.
+        check_faiss_chaos()
+        check_pinecone_chaos()
+
+        db = self._get_db()
+        note = db.get_latest_note(patient_id)
+        if not note:
+            raise ValueError(f"No notes found for patient {patient_id}")
+
+        facts = self.extractor.extract(note["note_text"])
+        self._log("Extractor", "extract_facts", facts.is_complete(),
+                  f"A1C={facts.a1c}, BP={facts.blood_pressure}, Method={facts.extraction_method}")
+
+        reasoning_result = self.reasoning_engine.evaluate_patient(facts, patient_id)
+        self._log("ReasoningEngine", "evaluate_gaps", True,
+                  f"{reasoning_result.gaps_found} gaps found, {reasoning_result.gaps_closed} closed")
+
+        return facts, reasoning_result
+
     def process_query(
         self,
         query: str,
