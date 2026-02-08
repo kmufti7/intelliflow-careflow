@@ -18,6 +18,7 @@ from planner_agent import PlannerAgent, ExecutionPlan, ActionType
 from extraction import PatientFactExtractor, ExtractedFacts
 from reasoning_engine import ReasoningEngine, ReasoningResult, GapResult
 from tools import BookingTool, VectorSearchTool, BookingResult
+from chaos_mode import get_chaos_config, check_faiss_chaos, check_pinecone_chaos, ChaosError, FALLBACK_RESPONSE
 
 load_dotenv()
 
@@ -186,6 +187,12 @@ class CareOrchestrator:
             if result.response:
                 result.success = True
 
+        except ChaosError as ce:
+            result.error = str(ce)
+            result.response = FALLBACK_RESPONSE
+            result.success = False
+            self._log("ChaosMode", f"failure_injected: {ce.failure_type.value}", False, str(ce))
+
         except Exception as e:
             result.error = str(e)
             self._log("Orchestrator", "execution_error", False, str(e))
@@ -286,6 +293,10 @@ class CareOrchestrator:
         result: OrchestratorResult
     ) -> dict:
         """Execute guideline retrieval step."""
+        # Chaos mode: check for simulated retrieval failures
+        check_faiss_chaos()
+        check_pinecone_chaos()
+
         # Build search query from diagnoses or input
         if result.extracted_facts and result.extracted_facts.diagnoses:
             search_query = " ".join(result.extracted_facts.diagnoses)

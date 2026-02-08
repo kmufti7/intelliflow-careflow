@@ -155,6 +155,7 @@ python care_app.py --mode=enterprise
 - **Guideline Search**: FAISS vector search over medical guidelines
 - **Governance Logging**: Full audit trail of all operations
 - **FHIR Ingestion**: Structured data intake from HL7 FHIR R4 Bundles
+- **Chaos Engineering**: Deterministic failure injection for resilience testing
 
 ---
 
@@ -188,6 +189,35 @@ Both paths feed the same deterministic reasoning engine — structured data skip
 
 ---
 
+## Resilience & Chaos Engineering
+
+CareFlow includes deterministic chaos mode for resilience testing — matching the SupportFlow pattern. Failures are toggled (not random), making demos reproducible and tests deterministic.
+
+### Failure Types
+
+| Failure Type | Simulation | Fallback Behavior |
+|-------------|------------|-------------------|
+| FAISS Retrieval | Local patient index unavailable | Safe fallback response + audit log entry |
+| Pinecone Retrieval | Cloud guidelines service unavailable | Safe fallback response + audit log entry |
+
+### How It Works
+
+1. **Toggle** — Enable chaos mode via the Streamlit sidebar checkbox
+2. **Select** — Choose which failure to inject (FAISS or Pinecone)
+3. **Observe** — The orchestrator catches the simulated failure, returns a safe fallback response, and logs the event to the governance audit trail
+4. **Verify** — No clinical decisions are surfaced during failures
+
+### Why Deterministic Chaos?
+
+- **Reproducible demos**: Same toggle always produces the same failure
+- **Testable**: Unit tests assert on failure paths without flakiness
+- **Safe**: Fallback response explicitly warns against clinical decisions
+- **Auditable**: Every injected failure is logged in the governance trail
+
+In production, you'd use percentage-based injection with kill switches and circuit breakers.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology | Purpose |
@@ -218,6 +248,7 @@ IntelliFlow_CareFlow/
 |-- tools.py                 # Booking tool and utilities
 |-- vector_store_faiss.py    # FAISS index management (PHI-safe, local)
 |-- concept_query.py         # PHI de-identification layer
+|-- chaos_mode.py            # Deterministic chaos failure injection
 |-- guideline_retriever.py   # Hybrid vector retrieval (FAISS/Pinecone)
 |-- ingest_guidelines_pinecone.py  # Enterprise mode setup script
 |-- seed_care_data.py        # Sample data seeder
@@ -229,6 +260,7 @@ IntelliFlow_CareFlow/
 |   |-- test_concept_query.py  # PHI de-identification tests
 |   |-- test_retrieval.py    # Hybrid retrieval tests
 |   |-- test_fhir_ingest.py  # FHIR ingestion tests
+|   |-- test_chaos_mode.py   # Chaos mode resilience tests
 |-- data/
 |   |-- medical_kb/          # Guideline markdown files (10 guidelines)
 |   |-- fhir_bundle.json     # Sample FHIR R4 Bundle (Patient + A1C Observation)
@@ -307,8 +339,9 @@ SUMMARY
   [PASS] Concept Query: 15/15
   [PASS] Retrieval: 15/15
   [PASS] FHIR Ingest: 3/3
+  [PASS] Chaos Mode: 12/12
 ----------------------------------------------------------------------
-  TOTAL: 69/69 (ALL TESTS PASSED)
+  TOTAL: 81/81 (ALL TESTS PASSED)
 ```
 
 ---

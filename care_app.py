@@ -15,6 +15,7 @@ from seed_care_data import seed_all
 from extraction import PatientFactExtractor, ExtractedFacts
 from reasoning_engine import ReasoningEngine, ReasoningResult, GapResult
 from care_orchestrator import CareOrchestrator
+from chaos_mode import set_chaos_config, ChaosFailureType
 
 # Page configuration
 st.set_page_config(
@@ -634,6 +635,25 @@ def main():
                         st.success("No gaps")
         else:
             st.info("Select a patient to view details")
+
+        # Chaos Mode toggle
+        st.markdown("---")
+        st.markdown("#### Chaos Mode")
+        chaos_enabled = st.checkbox("Enable Chaos Mode", value=False, key="chaos_toggle")
+        if chaos_enabled:
+            failure_type = st.selectbox(
+                "Failure Type",
+                options=[ChaosFailureType.FAISS_UNAVAILABLE, ChaosFailureType.PINECONE_UNAVAILABLE],
+                format_func=lambda x: {
+                    ChaosFailureType.FAISS_UNAVAILABLE: "FAISS Retrieval Failure",
+                    ChaosFailureType.PINECONE_UNAVAILABLE: "Pinecone Retrieval Failure",
+                }[x],
+                key="chaos_failure_type"
+            )
+            set_chaos_config(enabled=True, failure_type=failure_type)
+            st.warning("Chaos mode active — failures will be injected")
+        else:
+            set_chaos_config(enabled=False)
 
     # Header
     st.markdown('<h1 class="main-title">IntelliFlow OS: CareFlow Module</h1>', unsafe_allow_html=True)
