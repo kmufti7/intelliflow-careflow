@@ -339,9 +339,9 @@ SUMMARY
   [PASS] Concept Query: 15/15
   [PASS] Retrieval: 15/15
   [PASS] FHIR Ingest: 3/3
-  [PASS] Chaos Mode: 12/12
+  [PASS] Chaos Mode: 15/15
 ----------------------------------------------------------------------
-  TOTAL: 81/81 (ALL TESTS PASSED)
+  TOTAL: 84/84 (ALL TESTS PASSED)
 ```
 
 ---
@@ -361,24 +361,34 @@ SUMMARY
 ## Screenshots
 
 ### Main UI
-![Main UI](screenshots/main_ui.png)
+<img src="screenshots/main_ui.png" alt="Main UI" width="100%">
+
 *CareFlow main interface with patient selection*
 
 ### Extracted Facts
-![Extracted Facts](screenshots/extracted_facts.png)
+<img src="screenshots/extracted_facts.png" alt="Extracted Facts" width="100%">
+
 *Regex-first extraction of clinical facts from patient notes*
 
 ### Care Gaps
-![Care Gaps](screenshots/care_gaps.png)
+<img src="screenshots/care_gaps.png" alt="Care Gaps" width="100%">
+
 *Deterministic gap detection with "Therefore" statements*
 
 ### Booking
-![Booking](screenshots/booking.png)
+<img src="screenshots/booking.png" alt="Booking" width="100%">
+
 *Appointment booking based on detected care gaps*
 
 ### Governance Log
-![Governance Log](screenshots/governance_log.png)
+<img src="screenshots/governance_log.png" alt="Governance Log" width="100%">
+
 *Full audit trail of all system operations*
+
+### Chaos Mode
+<img src="screenshots/chaos_mode.png" alt="Chaos Mode" width="100%">
+
+*Chaos Mode — FAISS failure injection with graceful degradation*
 
 ---
 
