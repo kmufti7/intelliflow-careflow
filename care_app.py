@@ -15,7 +15,7 @@ from seed_care_data import seed_all
 from extraction import PatientFactExtractor, ExtractedFacts
 from reasoning_engine import ReasoningEngine, ReasoningResult, GapResult
 from care_orchestrator import CareOrchestrator
-from chaos_mode import set_chaos_config, get_chaos_config, ChaosFailureType, ChaosError, check_faiss_chaos, check_pinecone_chaos, FALLBACK_RESPONSE
+from chaos_mode import set_chaos_config, ChaosFailureType, ChaosError, FALLBACK_RESPONSE
 
 # Page configuration
 st.set_page_config(
@@ -536,27 +536,20 @@ def render_patient_note(patient_id: str):
         st.markdown("**Latest Clinic Note** " + f"({note['note_date']})")
         st.markdown(f'<div class="clinic-note">{note["note_text"]}</div>', unsafe_allow_html=True)
 
-        # Check chaos mode before running the pipeline
-        chaos_config = get_chaos_config()
-        if chaos_config.enabled:
-            try:
-                check_faiss_chaos()
-                check_pinecone_chaos()
-            except ChaosError as ce:
-                add_governance_log("ChaosMode", f"failure_injected: {ce.failure_type.value}", False, str(ce))
-                st.error(FALLBACK_RESPONSE)
-                return
-
-        # Extract facts if not already done for this patient
+        # Run chaos-guarded analysis through the orchestrator
         facts_key = f"facts_{patient_id}"
         gaps_key = f"gaps_{patient_id}"
 
         if facts_key not in st.session_state or st.session_state.get("last_patient_id") != patient_id:
-            st.session_state[facts_key] = extract_patient_facts(note["note_text"])
-            st.session_state[gaps_key] = evaluate_care_gaps(
-                st.session_state[facts_key],
-                patient_id
-            )
+            try:
+                orchestrator = st.session_state.orchestrator
+                facts, reasoning_result = orchestrator.analyze_patient(patient_id)
+                st.session_state[facts_key] = facts
+                st.session_state[gaps_key] = reasoning_result
+            except ChaosError as ce:
+                add_governance_log("ChaosMode", f"failure_injected: {ce.failure_type.value}", False, str(ce))
+                st.error(FALLBACK_RESPONSE)
+                return
             st.session_state["last_patient_id"] = patient_id
 
         # Render extracted facts

@@ -142,5 +142,50 @@ class TestChaosAuditIntegration(unittest.TestCase):
         self.assertNotEqual(result.response, FALLBACK_RESPONSE)
 
 
+@unittest.skipUnless(HAS_ORCHESTRATOR, "Requires openai and other orchestrator dependencies")
+class TestChaosBlocksPatientAnalysis(unittest.TestCase):
+    """Tests that chaos mode blocks the patient-selection analysis path.
+
+    This is the path render_patient_note() uses: orchestrator.analyze_patient().
+    If someone removes the chaos check from analyze_patient(), these tests fail.
+    """
+
+    def tearDown(self):
+        set_chaos_config(enabled=False)
+
+    def test_analyze_patient_raises_chaos_error_when_faiss_enabled(self):
+        """analyze_patient() must raise ChaosError before extraction runs."""
+        set_chaos_config(enabled=True, failure_type=ChaosFailureType.FAISS_UNAVAILABLE)
+
+        orchestrator = CareOrchestrator()
+        with self.assertRaises(ChaosError) as ctx:
+            orchestrator.analyze_patient("PT001")
+
+        self.assertEqual(ctx.exception.failure_type, ChaosFailureType.FAISS_UNAVAILABLE)
+
+    def test_analyze_patient_raises_chaos_error_when_pinecone_enabled(self):
+        """analyze_patient() must raise ChaosError for Pinecone failures too."""
+        set_chaos_config(enabled=True, failure_type=ChaosFailureType.PINECONE_UNAVAILABLE)
+
+        orchestrator = CareOrchestrator()
+        with self.assertRaises(ChaosError) as ctx:
+            orchestrator.analyze_patient("PT001")
+
+        self.assertEqual(ctx.exception.failure_type, ChaosFailureType.PINECONE_UNAVAILABLE)
+
+    def test_analyze_patient_returns_facts_and_gaps_when_chaos_disabled(self):
+        """analyze_patient() returns normal results when chaos is off."""
+        set_chaos_config(enabled=False)
+
+        orchestrator = CareOrchestrator()
+        facts, reasoning_result = orchestrator.analyze_patient("PT001")
+
+        # Should get real extracted facts, not a fallback
+        self.assertIsNotNone(facts)
+        self.assertIsNotNone(facts.a1c)
+        self.assertIsNotNone(reasoning_result)
+        self.assertGreater(reasoning_result.gaps_found, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
