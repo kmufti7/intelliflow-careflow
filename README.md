@@ -78,15 +78,13 @@ flowchart TD
 2. **De-identification Layer**: The ConceptQueryBuilder transforms patient facts into generic clinical concepts before any external query
 3. **Mode Switching**: Enterprise deployments can use Pinecone for scalable guideline search while maintaining PHI protection
 
-### Running Modes
+### Running the App
 
 ```bash
-# Local mode (default) - FAISS only, zero external dependencies
-python care_app.py --mode=local
-
-# Enterprise mode - Pinecone for guidelines, FAISS for patient data
-python care_app.py --mode=enterprise
+streamlit run care_app.py
 ```
+
+The app defaults to local FAISS mode (zero external dependencies). Enterprise mode with Pinecone requires additional setup — see [Setting Up Enterprise Mode](#setting-up-enterprise-mode) below.
 
 ### Concept Query De-identification
 
@@ -187,6 +185,8 @@ FHIR Bundle (JSON)          Unstructured Note (text)
 
 Both paths feed the same deterministic reasoning engine — structured data skips the extraction uncertainty entirely.
 
+> **Note:** FHIR ingestion is a code-level module (`fhir_ingest.py`), importable via `from fhir_ingest import parse_fhir_bundle`. It is not accessible through the Streamlit UI, which only supports the legacy clinic note path.
+
 ---
 
 ## Resilience & Chaos Engineering
@@ -273,7 +273,7 @@ IntelliFlow_CareFlow/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/IntelliFlow_CareFlow.git
+git clone https://github.com/kmufti7/intelliflow-careflow.git
 cd IntelliFlow_CareFlow
 ```
 
@@ -303,30 +303,19 @@ streamlit run care_app.py
 
 ## How to Test
 
-Run the full test suite:
+Run both test runners for the full 84 tests:
 
 ```bash
+# Core test suite — 66 tests (5 suites)
 python test_suite.py
+
+# Chaos Mode + FHIR tests — 18 tests
+python -m pytest tests/ -v
 ```
 
-This will:
-- Run all extraction tests (11 tests)
-- Run all reasoning tests (14 tests)
-- Run all booking tests (11 tests)
-- Output detailed results to `test_results.txt`
+`test_suite.py` runs 5 suites: Extraction (11), Reasoning (14), Booking (11), Concept Query (15), Retrieval (15).
 
-Run individual test modules:
-
-```bash
-# Extraction tests only
-python tests/test_extraction.py
-
-# Reasoning tests only
-python tests/test_reasoning.py
-
-# Booking tests only
-python tests/test_booking.py
-```
+`pytest tests/` runs Chaos Mode (15) and FHIR Ingest (3).
 
 ### Expected Test Results
 
@@ -353,7 +342,7 @@ SUMMARY
 | PT001 | Maria Garcia | 8.2% | 142/94 | A1C, ACE/ARB, BP |
 | PT002 | James Wilson | 7.4% | 128/82 | A1C (borderline) |
 | PT003 | Sarah Chen | 9.1% | 118/76 | High A1C |
-| PT004 | Robert Johnson | 6.8% | 148/94 | ACE/ARB, BP |
+| PT004 | Robert Thompson | 6.8% | 148/94 | ACE/ARB, BP |
 | PT005 | Linda Martinez | 7.0% | 122/78 | At A1C goal |
 
 ---
