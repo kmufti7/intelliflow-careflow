@@ -222,7 +222,7 @@ In production, you'd use percentage-based injection with kill switches and circu
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| LLM | OpenAI GPT-4o-mini | Extraction fallback + Explanation |
+| LLM | Azure OpenAI GPT-4o-mini | Extraction fallback + Explanation |
 | Extraction | Python regex | Primary fact extraction |
 | Reasoning | Python code | Deterministic gap logic |
 | Vector Store | FAISS (local) | PHI-safe patient note retrieval |
@@ -453,7 +453,7 @@ for gap in result.gaps:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| OPENAI_API_KEY | OpenAI API key | Yes |
+| OPENAI_API_KEY | Azure OpenAI API key | Yes |
 | PINECONE_API_KEY | Pinecone API key (enterprise mode only) | No |
 
 ---
